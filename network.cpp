@@ -3,6 +3,8 @@
 */
 
 // standard library
+#include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
@@ -19,7 +21,8 @@
 class Socket {
 
     struct addrinfo hints, *res;
-    std::string hostname, port_or_scheme;
+    std::string hostname, port_or_service;
+    int fd;
 
     void printIPAddress() {
         if(res == nullptr) {
@@ -36,13 +39,13 @@ class Socket {
 
         for(p = res; p != nullptr; p = p -> ai_next) {
             if(p -> ai_family == AF_INET) {
-                ip_ver = "IPV4";
-                // pointer to location of IPV4 addr
+                ip_ver = "IPv4";
+                // pointer to location of IPv4 addr
                 struct sockaddr_in *ipv4 = (struct sockaddr_in *)p -> ai_addr;
                 addr_ptr = &(ipv4 -> sin_addr);
             } else {
-                ip_ver = "IPV6";
-                // pointer to location of IPV6 addr
+                ip_ver = "IPv6";
+                // pointer to location of IPv6 addr
                 struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p -> ai_addr;
                 addr_ptr = &(ipv6 -> sin6_addr);
             }
@@ -54,22 +57,22 @@ class Socket {
     }
 
     // retrieves all available addresses for provided hostname and port/scheme
-    std::vector<struct addrinfo> setHostAddress(std::string hostname, std::string port_or_scheme) {
+    std::vector<struct addrinfo> setHostAddress(std::string hostname, std::string port_or_service) {
 
         std::vector<struct addrinfo> res_vector;
         struct addrinfo *res_ptr;
 
         int status;
         const char *cstr_hostname = hostname.c_str();
-        const char *cstr_port_or_scheme = port_or_scheme != "" ? port_or_scheme.c_str() : nullptr;
+        const char *cstr_port_or_service = port_or_service != "" ? port_or_service.c_str() : nullptr;
         this -> hostname = hostname;
-        this -> port_or_scheme = port_or_scheme;
+        this -> port_or_service = port_or_service;
 
         std::memset(&hints, 0, sizeof hints);   // make sure the struct is empty
-        hints.ai_family = AF_UNSPEC;            // use either AF_INET (IPV4) / AF_INET6 (IPV6)
+        hints.ai_family = AF_UNSPEC;            // use either AF_INET (IPv4) / AF_INET6 (IPv6)
         hints.ai_socktype = SOCK_STREAM;        // use TCP sockets
 
-        status = getaddrinfo(cstr_hostname, cstr_port_or_scheme, &hints, &res);
+        status = getaddrinfo(cstr_hostname, cstr_port_or_service, &hints, &res);
 
         if(status != 0) {
             std::cout << "Error in getaddrinfo:" << gai_strerror(status) << std::endl;
@@ -84,12 +87,37 @@ class Socket {
     }
 
     public:
-    Socket(std::string hostname, std::string port_or_scheme) {
-        this -> setHostAddress(hostname, port_or_scheme);
-        this -> printIPAddress();
+    Socket(std::string hostname, std::string port_or_service) {
+        this -> setHostAddress(hostname, port_or_service);
+        // this -> printIPAddress();
+        int sockfd = socket(this -> res -> ai_family, this -> res -> ai_socktype, this -> res -> ai_protocol);
+        int status = connect(sockfd, this -> res -> ai_addr, this -> res -> ai_addrlen);
+
+        if(status == -1) {
+            std::cout << "Socket: error connecting. " << errno << std::endl;
+            exit(1);
+        }
+
+        this -> fd = sockfd;
+    }
+
+    void sendMessage() {
+        std::string msg =
+            "GET /index.html HTTP/1.0\r\n"
+            "Host: example.org\r\n"
+            "\r\n";
+        char response[4096];
+        send(this -> fd, msg.c_str(), msg.length(), 0);
+        int bytesRead = recv(this -> fd, response, 4095, 0);
+        if(bytesRead == -1) {
+            perror("recv");
+            exit(1);
+        }
+        std::cout << "Bytes read: " << bytesRead << "\nResponse: " << std::string(response) << std::endl;
     }
 
     ~Socket() {
+        // close(this -> fd);
         freeaddrinfo(this -> res);
     }
 };
@@ -102,5 +130,6 @@ int main(int argc, char *argv[]) {
 
 
     Socket s(argv[1], argv[2]);
+    s.sendMessage();
     return 0;
 }
