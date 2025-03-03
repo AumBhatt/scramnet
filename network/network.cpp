@@ -19,6 +19,8 @@
 
 #include "network.hpp"
 
+#define SOCK_BUFFER_SIZE 13848
+
 void Socket::printIPAddress() {
     if(res == nullptr) {
         std::cout << "Error: No host set. Call setHostAddress to set the host.";
@@ -95,19 +97,20 @@ Socket::Socket(std::string hostname, std::string port_or_service) {
     this -> fd = sockfd;
 }
 
-void Socket::sendMessage() {
+std::string Socket::request(std::string hostname) {
     std::string msg =
         "GET /index.html HTTP/1.0\r\n"
-        "Host: example.org\r\n"
+        "Host:" + hostname + "\r\n"
         "\r\n";
-    char response[4096];
-    send(this -> fd, msg.c_str(), msg.length(), 0);
-    int bytesRead = recv(this -> fd, response, 4095, 0);
+    char response[SOCK_BUFFER_SIZE];
+    send(this -> fd, msg.c_str(), SOCK_BUFFER_SIZE, 0);
+    int bytesRead = recv(this -> fd, response, SOCK_BUFFER_SIZE, 0);
     if(bytesRead == -1) {
         perror("recv");
         exit(1);
     }
     std::cout << "Bytes read: " << bytesRead << "\nResponse: " << std::string(response) << std::endl;
+    return std::string(response);
 }
 
 Socket::~Socket() {

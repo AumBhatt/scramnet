@@ -16,6 +16,6 @@ class Socket {
     public:
 
     Socket(std::string hostname, std::string port_or_service);
-    void sendMessage();
+    std::string request(std::string hostname);
     ~Socket();
 };
