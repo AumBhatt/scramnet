@@ -3,9 +3,8 @@
 #include "url/url.hpp"
 #include <string>
 #include <GL/freeglut_std.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+
+
 
 std::string response;
 
@@ -13,7 +12,11 @@ void displayText(std::string text, float x, float y) {
     glColor3f(255.0, 255.0, 255.0);
     glRasterPos2f(x, y);
     for (std::string::iterator c = text.begin(); c != text.end(); ++c) {
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+        if(*c == '\n') {
+            y += 25;
+            glRasterPos2f(x, y);
+        }
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *c);
     }
     glutSwapBuffers();
 }
@@ -27,7 +30,16 @@ void display() {
         0.0, 0.1, 0.0
     );
 
-    displayText(response, 0.0f, -10.0f);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(0, glutGet(GLUT_SCREEN_WIDTH), glutGet(GLUT_SCREEN_HEIGHT), 0);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    displayText(response, 10.0f, 20.0f);
 }
 
 int main(int argc, char *argv[]) {

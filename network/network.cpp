@@ -110,7 +110,8 @@ std::string Socket::request(std::string hostname) {
         exit(1);
     }
     std::cout << "Bytes read: " << bytesRead << "\nResponse: " << std::string(response) << std::endl;
-    return std::string(response);
+    std::string res = std::string(response);
+    return res.substr(res.find("\r\n\r\n"));
 }
 
 Socket::~Socket() {
